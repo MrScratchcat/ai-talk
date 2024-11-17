@@ -1,0 +1,108 @@
+#!/bin/bash
+
+banner () {
+clear
+echo " ▒█████   ██▓     ██▓    ▄▄▄       ███▄ ▄███▓ ▄▄▄      "
+echo "▒██▒  ██▒▓██▒    ▓██▒   ▒████▄    ▓██▒▀█▀ ██▒▒████▄    "
+echo "▒██░  ██▒▒██░    ▒██░   ▒██  ▀█▄  ▓██    ▓██░▒██  ▀█▄  "
+echo "▒██   ██░▒██░    ▒██░   ░██▄▄▄▄██ ▒██    ▒██ ░██▄▄▄▄██ "
+echo "░ ████▓▒░░██████▒░██████▒▓█   ▓██▒▒██▒   ░██▒ ▓█   ▓██▒"
+echo "░ ▒░▒░▒░ ░ ▒░▓  ░░ ▒░▓  ░▒▒   ▓▒█░░ ▒░   ░  ░ ▒▒   ▓▒█░"
+echo "  ░ ▒ ▒░ ░ ░ ▒  ░░ ░ ▒  ░ ▒   ▒▒ ░░  ░      ░  ▒   ▒▒ ░"
+echo "░ ░ ░ ▒    ░ ░     ░ ░    ░   ▒   ░      ░     ░   ▒   "
+echo "    ░ ░      ░  ░    ░  ░     ░  ░       ░         ░  ░"
+echo "                                                       "
+}
+
+export PATH="$PATH:$HOME/.local/bin"
+link="http://localhost:11434"
+folder=${HOME}/.ollama-chat/
+model="llama3.2-vision"
+history_file="${folder}AI-1-chat.json"
+banner
+ollama rm AI-1 AI-2 > /dev/null 2>&1
+
+echo  "AI-1: Who am I"
+read -p "you: " AI1
+
+banner
+echo  "AI-2: Who am I"
+read -p "you: " AI2
+
+mkdir -p "$folder"
+
+curl -s $link/api/create -d '{
+  "name": "AI1",
+  "modelfile": "FROM '$model'\nSYSTEM you are'$AI1'."
+}'
+
+curl -s $link/api/create -d '{
+  "name": "AI2",
+  "modelfile": "FROM '$model'\nSYSTEM you are'$AI2'."
+}' 
+
+echo '{"model": "'"$AI2"'", "messages": []}' > "${folder}AI-2-chat.json"
+echo '{"model": "'"$AI1"'", "messages": []}' > "${folder}AI-1-chat.json"
+
+initialize_history() {
+  if [[ ! -f "$history_file" ]]; then
+    echo '{"model": "'"$model"'", "messages": []}' > "$history_file"
+  else
+    jq --arg model "$model" '.model = $model' "$history_file" > tmp.json && mv tmp.json "$history_file"
+  fi
+}
+
+update_model_in_history() {
+  local new_model="$1"
+  model="$new_model"
+  jq --arg model "$new_model" '.model = $model' "$history_file" > tmp.json && mv tmp.json "$history_file"
+  echo "Model updated to: $new_model"
+}
+
+add_message_to_history() {
+  local role="$1"
+  local content="$2"
+  jq --arg role "$role" --arg content "$content" \
+    '.messages += [{"role": $role, "content": $content}]' \
+    "$history_file" > tmp.json && mv tmp.json "$history_file"
+}
+
+chat_with_AI_1() {
+  model="AI1"
+  history_file="${folder}AI-1-chat.json"
+  update_model_in_history "$model"
+  initialize_history
+  response1=$(curl -s -X POST "$link/api/chat" -d @"$history_file" | jq --unbuffered -r '.message.content' | tr -d '\n' | sed 's/\\n/ /g')
+  echo -e "\nAI-1: $response1"
+  add_message_to_history "assistant" "$response1"
+  history_file="${folder}AI-2-chat.json"
+  add_message_to_history "user" "$response1"
+  edge-playback --text "$response1" > /dev/null
+}
+
+chat_with_AI_2() {
+  model="AI2"
+  history_file="${folder}AI-2-chat.json"
+  update_model_in_history "$model"
+  initialize_history
+  response2=$(curl -s -X POST "$link/api/chat" -d @"$history_file" | jq --unbuffered -r '.message.content' | tr -d '\n' | sed 's/\\n/ /g')
+  echo -e "\nAI-2: $response2"
+  add_message_to_history "assistant" "$response2"
+  history_file="${folder}AI-1-chat.json"
+  add_message_to_history "user" "$response2"
+  edge-playback --pitch=-50Hz --text "$response2" > /dev/null
+}
+
+
+history_file="${folder}AI-1-chat.json"
+initialize_history
+history_file="${folder}AI-2-chat.json"
+initialize_history
+
+add_message_to_history "user" "hi"
+while true; do
+  chat_with_AI_1
+  chat_with_AI_2
+done
+
+exit
