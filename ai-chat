@@ -20,25 +20,24 @@ folder=${HOME}/.ollama-chat/
 model="llama3.2-vision"
 history_file="${folder}AI-1-chat.json"
 banner
-ollama rm AI-1 AI-2 > /dev/null 2>&1
+ollama rm AI-1 > /dev/null 2>&1
+ollama rm AI-2 > /dev/null 2>&1
 
 echo  "AI-1: Who am I"
 read -p "you: " AI1
-
-banner
 echo  "AI-2: Who am I"
 read -p "you: " AI2
 
 mkdir -p "$folder"
-
+sleep 2
 curl -s $link/api/create -d '{
   "name": "AI1",
-  "modelfile": "FROM '$model'\nSYSTEM you are'$AI1'."
+  "modelfile": "FROM '$model'\nSYSTEM '$AI1'."
 }'
 
 curl -s $link/api/create -d '{
   "name": "AI2",
-  "modelfile": "FROM '$model'\nSYSTEM you are'$AI2'."
+  "modelfile": "FROM '$model'\nSYSTEM '$AI2'."
 }' 
 
 echo '{"model": "'"$AI2"'", "messages": []}' > "${folder}AI-2-chat.json"
@@ -90,7 +89,7 @@ chat_with_AI_2() {
   add_message_to_history "assistant" "$response2"
   history_file="${folder}AI-1-chat.json"
   add_message_to_history "user" "$response2"
-  edge-playback --pitch=-50Hz --text "$response2" > /dev/null
+  edge-playback --pitch=-25Hz --text "$response2" > /dev/null
 }
 
 
