@@ -17,7 +17,7 @@ echo "                                     
 export PATH="$PATH:$HOME/.local/bin"
 link="http://localhost:11434"
 folder=${HOME}/.ollama-chat/
-model="llama3.2-vision"
+model="llama3.2"
 history_file="${folder}AI-1-chat.json"
 banner
 ollama rm AI-1 > /dev/null 2>&1
