@@ -17,11 +17,16 @@ echo "                                     
 export PATH="$PATH:$HOME/.local/bin"
 link="http://localhost:11434"
 folder=${HOME}/.ollama-chat/
-model="llama3.2"
+model="llama3.2:1b"
 history_file="${folder}AI-1-chat.json"
 banner
-ollama rm AI-1 > /dev/null 2>&1
-ollama rm AI-2 > /dev/null 2>&1
+curl -X -s DELETE $link/api/delete -d '{
+  "model": "AI-1"
+}' > /dev/null
+
+curl -X -s DELETE $link/api/delete -d '{
+  "model": "AI-2"
+}' > /dev/null
 
 echo  "AI-1: Who am I"
 read -p "you: " AI1
